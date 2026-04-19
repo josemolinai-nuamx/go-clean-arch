@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/bxcodec/go-clean-arch/domain"
+	"github.com/josemolinai-nuamx/go-clean-arch/domain"
+	"github.com/sirupsen/logrus"
 )
 
 type AuthorRepository struct {
@@ -23,6 +24,12 @@ func (m *AuthorRepository) getOne(ctx context.Context, query string, args ...int
 	if err != nil {
 		return domain.Author{}, err
 	}
+	defer func() {
+		errClose := stmt.Close()
+		if errClose != nil {
+			logrus.Error(errClose)
+		}
+	}()
 	row := stmt.QueryRowContext(ctx, args...)
 	res = domain.Author{}
 

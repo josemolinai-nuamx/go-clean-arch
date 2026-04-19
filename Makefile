@@ -12,6 +12,8 @@ export SHELL  := bash
 export OSTYPE := $(shell uname -s | tr A-Z a-z)
 export ARCH := $(shell uname -m)
 
+DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; elif command -v docker >/dev/null 2>&1; then echo "docker compose"; else echo docker-compose; fi)
+
 
 
 # --- Tooling & Variables ----------------------------------------------------------------
@@ -30,27 +32,27 @@ deps:
 	@echo "Required Tools Are Available"
 
 dev-env: ## Bootstrap Environment (with a Docker-Compose help).
-	@ docker-compose up -d --build mysql
+	@ $(DOCKER_COMPOSE) up -d --build mysql
 
 dev-env-test: dev-env ## Run application (within a Docker-Compose help)
 	@ $(MAKE) image-build
-	docker-compose up web
+	$(DOCKER_COMPOSE) up web
 
 dev-air: $(AIR) ## Starts AIR ( Continuous Development app).
 	air
 
 docker-stop:
-	@ docker-compose down
+	@ $(DOCKER_COMPOSE) down
 
 docker-teardown:
-	@ docker-compose down --remove-orphans -v
+	@ $(DOCKER_COMPOSE) down --remove-orphans -v
 
 # ~~~ Code Actions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-lint: $(GOLANGCI) ## Runs golangci-lint with predefined configuration
+lint: ## Runs golangci-lint with predefined configuration
 	@echo "Applying linter"
-	golangci-lint version
-	golangci-lint run -c .golangci.yaml ./...
+	@GOTOOLCHAIN=auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 version
+	@GOTOOLCHAIN=auto go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run -c .golangci.yaml ./...
 
 # -trimpath - will remove the filepathes from the reports, good to same money on network trafic,
 #             focus on bug reports, and find issues fast.

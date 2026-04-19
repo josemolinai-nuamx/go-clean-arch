@@ -2,12 +2,12 @@ package article
 
 import (
 	"context"
+	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bxcodec/go-clean-arch/domain"
+	"github.com/josemolinai-nuamx/go-clean-arch/domain"
 )
 
 // ArticleRepository represent the article's repository contract
@@ -49,40 +49,31 @@ func NewService(a ArticleRepository, ar AuthorRepository) *Service {
  */
 func (a *Service) fillAuthorDetails(ctx context.Context, data []domain.Article) ([]domain.Article, error) {
 	g, ctx := errgroup.WithContext(ctx)
+	mu := sync.Mutex{}
 	// Get the author's id
 	mapAuthors := map[int64]domain.Author{}
+	authorIDs := make([]int64, 0, len(data))
 
 	for _, article := range data { //nolint
-		mapAuthors[article.Author.ID] = domain.Author{}
+		authorID := article.Author.ID
+		if _, ok := mapAuthors[authorID]; !ok {
+			mapAuthors[authorID] = domain.Author{}
+			authorIDs = append(authorIDs, authorID)
+		}
 	}
 	// Using goroutine to fetch the author's detail
-	chanAuthor := make(chan domain.Author)
-	for authorID := range mapAuthors {
+	for _, authorID := range authorIDs {
 		authorID := authorID
 		g.Go(func() error {
 			res, err := a.authorRepo.GetByID(ctx, authorID)
 			if err != nil {
 				return err
 			}
-			chanAuthor <- res
+			mu.Lock()
+			mapAuthors[res.ID] = res
+			mu.Unlock()
 			return nil
 		})
-	}
-
-	go func() {
-		defer close(chanAuthor)
-		err := g.Wait()
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-
-	}()
-
-	for author := range chanAuthor {
-		if author != (domain.Author{}) {
-			mapAuthors[author.ID] = author
-		}
 	}
 
 	if err := g.Wait(); err != nil {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/bxcodec/go-clean-arch/internal/repository"
+	"github.com/josemolinai-nuamx/go-clean-arch/domain"
+	"github.com/josemolinai-nuamx/go-clean-arch/internal/repository"
 )
 
 type ArticleRepository struct {
@@ -121,6 +121,12 @@ func (m *ArticleRepository) Store(ctx context.Context, a *domain.Article) (err e
 	if err != nil {
 		return
 	}
+	defer func() {
+		errClose := stmt.Close()
+		if errClose != nil {
+			logrus.Error(errClose)
+		}
+	}()
 
 	res, err := stmt.ExecContext(ctx, a.Title, a.Content, a.Author.ID, a.UpdatedAt, a.CreatedAt)
 	if err != nil {
@@ -141,6 +147,12 @@ func (m *ArticleRepository) Delete(ctx context.Context, id int64) (err error) {
 	if err != nil {
 		return
 	}
+	defer func() {
+		errClose := stmt.Close()
+		if errClose != nil {
+			logrus.Error(errClose)
+		}
+	}()
 
 	res, err := stmt.ExecContext(ctx, id)
 	if err != nil {
@@ -166,6 +178,12 @@ func (m *ArticleRepository) Update(ctx context.Context, ar *domain.Article) (err
 	if err != nil {
 		return
 	}
+	defer func() {
+		errClose := stmt.Close()
+		if errClose != nil {
+			logrus.Error(errClose)
+		}
+	}()
 
 	res, err := stmt.ExecContext(ctx, ar.Title, ar.Content, ar.Author.ID, ar.UpdatedAt, ar.ID)
 	if err != nil {

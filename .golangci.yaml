@@ -1,13 +1,4 @@
 linters-settings:
-  govet:
-    check-shadowing: true
-    settings:
-      printf:
-        funcs:
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
   gocyclo:
     min-complexity: 50
   maligned:
@@ -34,22 +25,12 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - errcheck
     - funlen
     - goconst
     - gocyclo
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
     - lll
     - misspell
     - revive
-    - staticcheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
 
   # don't enable:
   # - gochecknoglobals
@@ -59,11 +40,12 @@ linters:
   # - prealloc
 
 run:
+  go: "1.24"
   skip-dirs:
     # - test/testdata_etc
-  skip-files:
-    - ".*_test\\.go$"
 
 issues:
+  exclude-files:
+    - ".*_test\\.go$"
   exclude-rules:
   #

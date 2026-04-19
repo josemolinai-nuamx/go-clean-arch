@@ -12,18 +12,37 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
 
-	mysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
+	mysqlRepo "github.com/josemolinai-nuamx/go-clean-arch/internal/repository/mysql"
 
-	"github.com/bxcodec/go-clean-arch/article"
-	"github.com/bxcodec/go-clean-arch/internal/rest"
-	"github.com/bxcodec/go-clean-arch/internal/rest/middleware"
 	"github.com/joho/godotenv"
+	"github.com/josemolinai-nuamx/go-clean-arch/article"
+	"github.com/josemolinai-nuamx/go-clean-arch/internal/rest"
+	"github.com/josemolinai-nuamx/go-clean-arch/internal/rest/middleware"
 )
 
 const (
-	defaultTimeout = 30
-	defaultAddress = ":9090"
+	defaultTimeout         = 15
+	defaultAddress         = ":9090"
+	defaultMaxOpenConns    = 25
+	defaultMaxIdleConns    = 10
+	defaultConnMaxLifetime = 300
+	defaultConnMaxIdleTime = 120
 )
+
+func envInt(key string, fallback int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		log.Printf("invalid %s value (%q), using default %d", key, raw, fallback)
+		return fallback
+	}
+
+	return value
+}
 
 func init() {
 	err := godotenv.Load()
@@ -48,6 +67,17 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to open connection to database", err)
 	}
+
+	maxOpenConns := envInt("DB_MAX_OPEN_CONNS", defaultMaxOpenConns)
+	maxIdleConns := envInt("DB_MAX_IDLE_CONNS", defaultMaxIdleConns)
+	connMaxLifetimeSec := envInt("DB_CONN_MAX_LIFETIME_SEC", defaultConnMaxLifetime)
+	connMaxIdleTimeSec := envInt("DB_CONN_MAX_IDLE_TIME_SEC", defaultConnMaxIdleTime)
+
+	dbConn.SetMaxOpenConns(maxOpenConns)
+	dbConn.SetMaxIdleConns(maxIdleConns)
+	dbConn.SetConnMaxLifetime(time.Duration(connMaxLifetimeSec) * time.Second)
+	dbConn.SetConnMaxIdleTime(time.Duration(connMaxIdleTimeSec) * time.Second)
+
 	err = dbConn.Ping()
 	if err != nil {
 		log.Fatal("failed to ping database ", err)
@@ -63,12 +93,7 @@ func main() {
 
 	e := echo.New()
 	e.Use(middleware.CORS)
-	timeoutStr := os.Getenv("CONTEXT_TIMEOUT")
-	timeout, err := strconv.Atoi(timeoutStr)
-	if err != nil {
-		log.Println("failed to parse timeout, using default timeout")
-		timeout = defaultTimeout
-	}
+	timeout := envInt("CONTEXT_TIMEOUT", defaultTimeout)
 	timeoutContext := time.Duration(timeout) * time.Second
 	e.Use(middleware.SetRequestContextWithTimeout(timeoutContext))
 
