@@ -95,7 +95,24 @@ func isRequestValid(m *domain.Article) (bool, error) {
 	return true, nil
 }
 
-// Store will store the article by given request body
+// Store handles POST /articles requests.
+// RESPONSIBILITY (REST/Presentation layer):
+//  1. Parse HTTP JSON → Go struct (Bind)
+//  2. Basic validation: Did the JSON unmarshal correctly?
+//  3. Call Service.Store() which has BUSINESS logic
+//  4. Map domain errors → HTTP status codes (this is KEY for Clean Arch!)
+//  5. Return HTTP response with proper status
+//
+// IMPORTANT: Business validation ("is title long enough?") happens in Service,
+// not here. This handler only cares about HTTP concerns.
+//
+// Error mapping example:
+//
+//	domain.ErrValidationFailed → HTTP 400 (Bad Request)
+//	domain.ErrNotFound → HTTP 404 (Not Found)
+//	domain.ErrConflict → HTTP 409 (Conflict)
+//
+// See getStatusCode() function below for the mapping.
 func (a *ArticleHandler) Store(c echo.Context) (err error) {
 	var article domain.Article
 	err = c.Bind(&article)

@@ -10,7 +10,13 @@ import (
 	"github.com/josemolinai-nuamx/go-clean-arch/domain"
 )
 
-// ArticleRepository represent the article's repository contract
+// ArticleRepository defines the contract for data access operations on articles.
+// This is an INTERFACE (not concrete implementation) to achieve DEPENDENCY INVERSION:
+//   - Service depends on this interface, not on MySQL or PostgreSQL directly
+//   - For tests: inject a mock repository (no real database needed)
+//   - For production: inject the real MySQL repository
+//
+// The actual SQL queries are in: internal/repository/mysql/article.go
 //
 //go:generate mockery --name ArticleRepository
 type ArticleRepository interface {
@@ -22,19 +28,33 @@ type ArticleRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// AuthorRepository represent the author's repository contract
+// AuthorRepository defines the contract for fetching author data.
+// Same pattern as ArticleRepository: interface-based for testability.
 //
 //go:generate mockery --name AuthorRepository
 type AuthorRepository interface {
 	GetByID(ctx context.Context, id int64) (domain.Author, error)
 }
 
+// Service orchestrates the business logic (use cases) for articles.
+// RESPONSIBILITY:
+//   - Execute business rules (validation, conflict checking, etc.)
+//   - Coordinate between repositories and domain entities
+//   - Transform errors into domain-level errors
+//
+// DOESN'T do:
+//   - Direct SQL queries (that's Repository's job)
+//   - HTTP handling (that's REST Handler's job)
 type Service struct {
 	articleRepo ArticleRepository
 	authorRepo  AuthorRepository
 }
 
-// NewService will create a new article service object
+// NewService creates a new Service with injected dependencies.
+// Dependency Injection pattern: The service receives its dependencies,
+// doesn't create them itself. This makes it:
+//   - Testable: inject mock repositories
+//   - Flexible: swap repositories without changing Service code
 func NewService(a ArticleRepository, ar AuthorRepository) *Service {
 	return &Service{
 		articleRepo: a,
